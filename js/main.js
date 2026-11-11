@@ -212,6 +212,13 @@ canvas.addEventListener('pointermove', (e) => {
 });
 const endPtr = (e) => { if (e.pointerId === joy.id) { joy.id = null; joy.x = joy.y = 0; knob(0, 0); } if (e.pointerId === look.id) look.id = null; };
 canvas.addEventListener('pointerup', endPtr); canvas.addEventListener('pointercancel', endPtr);
+// iOS: un pulgar apretado mucho rato abre la lupa, selecciona texto o hace zoom. Bloquearlo en toda la vista de juego.
+const isGameTouch = (e) => !e.target.closest || !e.target.closest('.menu__panel, .tourbar button, #menu-btn, #start, #loader-retry');
+for (const ev of ['touchstart', 'touchmove']) document.addEventListener(ev, (e) => { if (isGameTouch(e) && e.cancelable) e.preventDefault(); }, { passive: false });
+for (const ev of ['selectstart', 'contextmenu', 'gesturestart', 'gesturechange', 'dblclick']) document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
+document.addEventListener('selectionchange', () => { const s = getSelection(); if (s && s.rangeCount) s.removeAllRanges(); });
+// el segundo pulgar puede caer sobre la etiqueta del lugar o el mapa: que también sirva para mirar
+for (const el of [$('map'), document.querySelector('.place')]) el.style.pointerEvents = 'none';
 const knobEl = document.querySelector('.joy__knob');
 function knob(x, y) { knobEl.style.transform = `translate(${x * 32}px, ${y * 32}px)`; }
 
