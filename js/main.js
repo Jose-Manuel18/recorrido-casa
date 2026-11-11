@@ -137,7 +137,7 @@ function setupComposer() {
 setupComposer();
 
 // ---------- Jugador ----------
-const player = { x: +(params.get('x') ?? START.x), z: +(params.get('z') ?? START.z), yaw: +(params.get('yaw') ?? START.yaw), pitch: +(params.get('pitch') ?? 0), vx: 0, vz: 0, bob: 0 };
+const player = { x: +(params.get('x') ?? START.x), z: +(params.get('z') ?? START.z), yaw: +(params.get('yaw') ?? START.yaw), pitch: +(params.get('pitch') ?? 0), vx: 0, vz: 0, bob: 0, jy: 0, vy: 0 };
 const R = 0.24, EYE = 1.62;
 function resolve(p) {
   for (let it = 0; it < 3; it++) {
@@ -162,6 +162,7 @@ const joy = { id: null, ox: 0, oy: 0, x: 0, y: 0 }, look = { id: null, x: 0, y: 
 addEventListener('keydown', (e) => {
   if (e.code === 'KeyM' && playing) toggleMap();
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code) && playing) e.preventDefault();
+  if (e.code === 'Space' && playing && !tour && $('menu').hidden && player.jy === 0) player.vy = 4.3; // salto
   keys.add(e.code);
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
@@ -202,7 +203,7 @@ function begin() {
   $('intro').hidden = true; $('hud').hidden = false; playing = true;
   if (!isTouch) canvas.requestPointerLock?.();
   canvas.focus({ preventScroll: true });
-  toast(isTouch ? 'Camina con el pulgar izquierdo y arrastra para mirar.' : 'W A S D para caminar · ratón para mirar · Esc abre el menú', 6000);
+  toast(isTouch ? 'Camina con el pulgar izquierdo y arrastra para mirar.' : 'W A S D para caminar · ratón para mirar · Espacio para saltar · Esc abre el menú', 6000);
   perf.t = 0; perf.n = 0; perf.on = quality === 'alta' && !params.has('q');
 }
 function openMenu() { $('menu').hidden = false; document.exitPointerLock?.(); $('resume').focus(); keys.clear(); }
@@ -299,7 +300,8 @@ function tick() {
     player.yaw = START.yaw + Math.sin(t * 0.18) * 0.35;
   }
   const bob = reduceMotion ? 0 : Math.sin(player.bob * 3.4) * 0.022;
-  camera.position.set(player.x, EYE + bob, player.z);
+  if (player.vy !== 0 || player.jy > 0) { player.vy -= 13 * dt; player.jy += player.vy * dt; if (player.jy <= 0) { player.jy = 0; player.vy = 0; } }
+  camera.position.set(player.x, EYE + bob + player.jy, player.z);
   camera.rotation.set(player.pitch, player.yaw, 0);
   sky.position.copy(camera.position);
 
