@@ -49,7 +49,7 @@ export function buildCasa1(c) {
   W(352, 492, 549, 492, [[358, 398, 'door', { side: 1 }]]);
   W(549, 492, 549, 660);
   W(350, 660, 550, 660);
-  W(595, 660, 660, 660);
+  W(550, 660, 718, 660, [[562, 706, 'arch']]); // paso amplio entre el hall y el área de exhibiciones (en el plano había un trozo de muro suelto)
   // ---------- Estar / terraza ----------
   W(550, 435, 718, 435, [[565, 705, 'slide']]);
   W(720, 345, 720, 382);
@@ -134,7 +134,7 @@ export function buildCasa1(c) {
   // Exhibiciones / hall
   F.display(c.atp(612, 520, 90), 1.6); F.display(c.atp(600, 618, 0), 1.3);
   F.pedestal(c.atp(585, 505)); F.pedestal(c.atp(655, 520)); F.printerTable(onWall(c, [550, 435, 718, 660], 'w', 0.45));
-  F.bench(c.atp(627, 648), 1.2); F.plant(c.atp(566, 645), 1.6); F.plant(c.atp(640, 674), 1.5);
+  F.bench(c.atp(564, 590, 90), 1.2); F.plant(c.atp(565, 641), 1.6);
   F.rugRect(c.atp(640, 545), 2.2, 1.5, PAL.cream);
   // Espera y recepción
   F.reception(c.atp(470, 772, 180), 2.2);
