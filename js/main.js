@@ -24,11 +24,19 @@ const isTouch = matchMedia('(pointer: coarse)').matches;
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const START = { x: 0, z: 9, yaw: 0 };
 
+// ---------- Pantalla de carga ----------
+const frameWait = () => new Promise((r) => { let done = false; const f = () => { if (!done) { done = true; r(); } }; requestAnimationFrame(() => setTimeout(f, 0)); setTimeout(f, 90); });
+async function progress(p) {
+  const fill = $('loader-fill'); fill.style.animation = 'none'; fill.style.width = p + '%';
+  $('loader-label').textContent = 'Cargando'; $('loader-pct').textContent = Math.round(p) + '%'; $('loader-retry').hidden = true;
+  await frameWait();
+}
+
 let renderer;
 try {
   renderer = new THREE.WebGLRenderer({ canvas: $('c'), antialias: true, powerPreference: 'high-performance' });
 } catch (e) {
-  $('fatal').hidden = false; $('intro').hidden = true; throw e;
+  $('fatal').hidden = false; $('intro').hidden = true; $('loader').hidden = true; clearTimeout(window.__loadTimer); throw e;
 }
 let quality = params.get('q') || (isTouch ? 'media' : 'alta');
 // en pantallas retina no hace falta dibujar a 2x: cuesta el doble y casi no se nota
@@ -94,7 +102,9 @@ sun.shadow.autoUpdate = false; sun.shadow.needsUpdate = true; // el sol no se mu
 scene.add(sun, sun.target);
 
 // ---------- Mundo ----------
+await progress(12);
 makeMaterials();
+await progress(22);
 const world = makeWorld();
 const root = new Ctx(world, new THREE.Matrix4());
 const X1 = -5.19, Z1 = 14.98, X2 = 33.68, Z2 = -31.24;
@@ -103,11 +113,18 @@ const c2 = new Ctx(world, new THREE.Matrix4().makeRotationY(-Math.PI / 2).setPos
 const lot1 = [X1 - (1157 - 46) / 45, Z1 - (1010 - 40) / 45, X1, Z1];
 const lot2 = [X2 - (1290 - 65) / 43, Z2, X2, Z2 + (1392 - 45) / 43];
 buildStreet(root, [lot1, lot2]);
-const houses = [buildCasa1(c1), buildCasa2(c2)];
+await progress(34);
+const house1 = buildCasa1(c1);
+await progress(50);
+const house2 = buildCasa2(c2);
+await progress(64);
+const houses = [house1, house2];
 houses[0].yaw = Math.PI / 2; houses[1].yaw = -Math.PI / 2;
 sign(root, -7.05, -0.35, PROJECTS[0].title, PROJECTS[0].sub, PROJECTS[0].accent);
 sign(root, 7.05, 0.45, PROJECTS[1].title, PROJECTS[1].sub, PROJECTS[1].accent);
 world.batch.build(scene);
+await progress(76);
+const facesReady = new Promise((res) => { THREE.DefaultLoadingManager.onLoad = res; setTimeout(res, 10000); });
 placePeople(scene, world);
 
 // luces de techo: un grupo pequeño que acompaña al jugador
@@ -330,6 +347,21 @@ function tick(now) {
   if (playing && mapOn && frame % 3 === 0) drawMap();
   if (composer) composer.render(); else renderer.render(scene, camera);
 }
+// ---------- Precarga: fotos, shaders y primer dibujo completo antes de dejar caminar ----------
+await progress(82);
+await facesReady;
+await progress(88);
+camera.position.set(player.x, EYE, player.z); camera.rotation.set(player.pitch, player.yaw, 0); camera.updateMatrixWorld();
+try { await renderer.compileAsync(scene, camera); } catch (e) { /* se compila al primer cuadro */ }
+await progress(94);
+scene.traverse((o) => { o.userData._fc = o.frustumCulled; o.frustumCulled = false; }); // dibujar todo una vez: sube texturas y geometría a la tarjeta
+sun.shadow.needsUpdate = true; renderer.render(scene, camera); await frameWait();
+for (let i = 0; i < 2 && composer; i++) { sun.shadow.needsUpdate = true; composer.render(); await frameWait(); }
+scene.traverse((o) => { o.frustumCulled = o.userData._fc; });
+await progress(100);
+clearTimeout(window.__loadTimer);
+$('loader').classList.add('loader--done'); setTimeout(() => ($('loader').hidden = true), 320);
+if (!params.has('x') && !params.has('play')) $('intro').hidden = false;
 renderer.setAnimationLoop(tick);
 
 addEventListener('resize', () => {

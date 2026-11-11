@@ -16,8 +16,26 @@
 <body>
   <canvas id="c" aria-label="Vista 3D del recorrido" tabindex="0"></canvas>
 
+  <!-- Pantalla de carga: se queda hasta que todo está listo para caminar sin tirones -->
+  <div id="loader" class="loader" role="status" aria-live="polite">
+    <div class="loader__box">
+      <div class="loader__bar" aria-hidden="true"><div id="loader-fill" class="loader__fill"></div></div>
+      <p class="loader__text"><span id="loader-label">Cargando</span> <span id="loader-pct"></span></p>
+      <button id="loader-retry" class="btn" hidden>Recargar la página</button>
+    </div>
+  </div>
+  <script>
+    // si algo impide cargar (por ejemplo, sin internet), avisar en vez de dejar la barra quieta
+    window.__loadTimer = setTimeout(function () {
+      document.getElementById('loader-label').textContent = 'Está tardando más de lo normal. Revisa tu conexión.';
+      document.getElementById('loader-pct').textContent = '';
+      document.getElementById('loader-retry').hidden = false;
+    }, 30000);
+    document.getElementById('loader-retry').addEventListener('click', function () { location.reload(); });
+  </script>
+
   <!-- Portada -->
-  <section id="intro" class="intro" aria-label="Inicio del recorrido">
+  <section id="intro" class="intro" aria-label="Inicio del recorrido" hidden>
     <button id="start" class="btn btn--primary" disabled>Preparando el recorrido…</button>
   </section>
 
