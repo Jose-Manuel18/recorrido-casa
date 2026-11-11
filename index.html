@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#14171a">
+  <title>Recorrido virtual · Dos proyectos</title>
+  <meta name="description" content="Recorrido 3D a pie por dos proyectos: camina por la calle y entra a cada casa.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%2314171a%27/%3E%3Cpath d=%27M6 17 16 8l10 9v8H6z%27 fill=%27%23e0a458%27/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="importmap">
+  { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }
+  </script>
+</head>
+<body>
+  <canvas id="c" aria-label="Vista 3D del recorrido" tabindex="0"></canvas>
+
+  <!-- Portada -->
+  <section id="intro" class="intro" aria-label="Inicio del recorrido">
+    <button id="start" class="btn btn--primary" disabled>Preparando el recorrido…</button>
+  </section>
+
+  <!-- HUD -->
+  <div id="hud" class="hud" hidden>
+    <div class="place" aria-live="polite"><span id="place-house" class="place__house">Calle</span><span id="place-room" class="place__room"></span></div>
+    <button id="menu-btn" class="btn btn--ghost menu-btn" aria-haspopup="dialog" aria-controls="menu">Menú</button>
+    <canvas id="map" class="map" width="360" height="360" aria-hidden="true"></canvas>
+    <div id="joy" class="joy" aria-hidden="true"><div class="joy__knob"></div></div>
+    <div id="tourbar" class="tourbar" hidden><span id="tour-label">Recorrido guiado</span><button id="tour-stop" class="btn btn--small">Detener</button></div>
+    <div id="toast" class="toast" role="status" hidden></div>
+    <div class="reticle" aria-hidden="true"></div>
+  </div>
+
+  <!-- Menú / pausa -->
+  <div id="menu" class="menu" role="dialog" aria-modal="true" aria-labelledby="menu-title" hidden>
+    <div class="menu__panel">
+      <h2 id="menu-title">Menú</h2>
+      <button id="resume" class="btn btn--primary">Seguir caminando</button>
+      <div class="group">
+        <h3>Ir a</h3>
+        <div class="row"><button class="btn" data-go="calle">La calle</button><button class="btn" data-go="0" id="go1">Proyecto 1</button><button class="btn" data-go="1" id="go2">Proyecto 2</button></div>
+      </div>
+      <div class="group">
+        <h3>Recorrido guiado</h3>
+        <p class="hint">La cámara camina sola por la casa. Puedes detenerlo cuando quieras.</p>
+        <div class="row"><button class="btn" data-tour="0" id="t1">Proyecto 1</button><button class="btn" data-tour="1" id="t2">Proyecto 2</button></div>
+      </div>
+      <div class="group">
+        <h3>Ajustes</h3>
+        <div class="row">
+          <button id="quality" class="btn" aria-pressed="true">Calidad: alta</button>
+          <button id="map-toggle" class="btn" aria-pressed="true">Mapa: visible</button>
+        </div>
+        <p class="hint">Si se mueve lento, baja la calidad.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="fatal" class="fatal" role="alert" hidden>
+    <h2>No se pudo iniciar la vista 3D</h2>
+    <p>Este recorrido necesita gráficos 3D (WebGL). Ábrelo con una versión reciente de Chrome, Edge o Safari, o prueba desde otra computadora o celular.</p>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
