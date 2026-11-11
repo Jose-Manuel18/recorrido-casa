@@ -196,31 +196,56 @@ document.addEventListener('pointerlockchange', () => {
 });
 document.addEventListener('mousemove', (e) => { if (!locked) return; player.yaw -= e.movementX * 0.0022; player.pitch = clampPitch(player.pitch - e.movementY * 0.0022); });
 const clampPitch = (p) => Math.max(-1.35, Math.min(1.35, p));
+const knobEl = document.querySelector('.joy__knob');
+function knob(x, y) { knobEl.style.transform = `translate(${x * 32}px, ${y * 32}px)`; }
+const releaseJoy = () => { joy.id = null; joy.x = joy.y = 0; knob(0, 0); };
+const releaseAll = () => { releaseJoy(); look.id = null; };
+const moveJoy = (x, y) => { let dx = (x - joy.ox) / 52, dy = (y - joy.oy) / 52; const m = Math.hypot(dx, dy); if (m > 1) { dx /= m; dy /= m; } joy.x = dx; joy.y = dy; knob(dx, dy); };
+const moveLook = (x, y, k) => { player.yaw -= (x - look.x) * k; player.pitch = clampPitch(player.pitch - (y - look.y) * k); look.x = x; look.y = y; };
+
+// ---- Ratón / lápiz (en computadora). El dedo va aparte, con eventos táctiles. ----
 canvas.addEventListener('pointerdown', (e) => {
-  if (!playing || locked) return;
-  if (e.pointerType === 'touch' && joy.id === null && e.clientX < innerWidth * 0.42 && e.clientY > innerHeight * 0.3) { joy.id = e.pointerId; joy.ox = e.clientX; joy.oy = e.clientY; joy.x = joy.y = 0; }
-  else if (look.id === null && (e.pointerType === 'touch' || tour || isTouch)) { look.id = e.pointerId; look.x = e.clientX; look.y = e.clientY; }
-  canvas.setPointerCapture?.(e.pointerId);
+  if (e.pointerType === 'touch' || !playing || locked) return;
+  if (look.id === null && tour) { look.id = e.pointerId; look.x = e.clientX; look.y = e.clientY; canvas.setPointerCapture?.(e.pointerId); }
 });
-canvas.addEventListener('pointermove', (e) => {
-  if (e.pointerId === joy.id) {
-    let dx = (e.clientX - joy.ox) / 52, dy = (e.clientY - joy.oy) / 52; const m = Math.hypot(dx, dy); if (m > 1) { dx /= m; dy /= m; }
-    joy.x = dx; joy.y = dy; knob(dx, dy);
-  } else if (e.pointerId === look.id) {
-    player.yaw -= (e.clientX - look.x) * 0.0045; player.pitch = clampPitch(player.pitch - (e.clientY - look.y) * 0.0045); look.x = e.clientX; look.y = e.clientY;
+canvas.addEventListener('pointermove', (e) => { if (e.pointerType !== 'touch' && e.pointerId === look.id) moveLook(e.clientX, e.clientY, 0.0045); });
+for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) canvas.addEventListener(ev, (e) => { if (e.pointerType !== 'touch' && e.pointerId === look.id) look.id = null; });
+
+// ---- Dedos: la lista de toques del navegador manda, así un dedo "perdido" nunca deja los controles trabados ----
+const UI_TARGETS = '.menu__panel, .tourbar button, #menu-btn, #start, #loader-retry';
+const onUI = (t) => t.target && t.target.closest && t.target.closest(UI_TARGETS);
+function syncTouches(e) {
+  const alive = new Set(Array.from(e.touches, (t) => t.identifier));
+  if (joy.id !== null && !alive.has(joy.id)) releaseJoy();
+  if (look.id !== null && !alive.has(look.id)) look.id = null;
+}
+document.addEventListener('touchstart', (e) => {
+  syncTouches(e);
+  const ui = Array.from(e.changedTouches).some(onUI);
+  if (!ui && e.cancelable) e.preventDefault(); // sin lupa, sin selección, sin zoom
+  if (!playing || !$('menu').hidden) return;
+  for (const t of e.changedTouches) {
+    if (onUI(t)) continue;
+    if (joy.id === null && t.clientX < innerWidth * 0.42 && t.clientY > innerHeight * 0.3) { joy.id = t.identifier; joy.ox = t.clientX; joy.oy = t.clientY; joy.x = joy.y = 0; }
+    else if (look.id === null) { look.id = t.identifier; look.x = t.clientX; look.y = t.clientY; }
   }
-});
-const endPtr = (e) => { if (e.pointerId === joy.id) { joy.id = null; joy.x = joy.y = 0; knob(0, 0); } if (e.pointerId === look.id) look.id = null; };
-canvas.addEventListener('pointerup', endPtr); canvas.addEventListener('pointercancel', endPtr);
-// iOS: un pulgar apretado mucho rato abre la lupa, selecciona texto o hace zoom. Bloquearlo en toda la vista de juego.
-const isGameTouch = (e) => !e.target.closest || !e.target.closest('.menu__panel, .tourbar button, #menu-btn, #start, #loader-retry');
-for (const ev of ['touchstart', 'touchmove']) document.addEventListener(ev, (e) => { if (isGameTouch(e) && e.cancelable) e.preventDefault(); }, { passive: false });
+}, { passive: false });
+document.addEventListener('touchmove', (e) => {
+  if (!Array.from(e.changedTouches).some(onUI) && e.cancelable) e.preventDefault();
+  for (const t of e.changedTouches) {
+    if (t.identifier === joy.id) moveJoy(t.clientX, t.clientY);
+    else if (t.identifier === look.id) moveLook(t.clientX, t.clientY, 0.0045);
+  }
+}, { passive: false });
+for (const ev of ['touchend', 'touchcancel']) document.addEventListener(ev, syncTouches, { passive: true });
+// si el sistema se mete en medio (notificación, cambio de app, menú), soltar todo
+for (const ev of ['blur', 'pagehide']) addEventListener(ev, releaseAll);
+document.addEventListener('visibilitychange', () => { if (document.hidden) releaseAll(); });
+
 for (const ev of ['selectstart', 'contextmenu', 'gesturestart', 'gesturechange', 'dblclick']) document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
 document.addEventListener('selectionchange', () => { const s = getSelection(); if (s && s.rangeCount) s.removeAllRanges(); });
 // el segundo pulgar puede caer sobre la etiqueta del lugar o el mapa: que también sirva para mirar
 for (const el of [$('map'), document.querySelector('.place')]) el.style.pointerEvents = 'none';
-const knobEl = document.querySelector('.joy__knob');
-function knob(x, y) { knobEl.style.transform = `translate(${x * 32}px, ${y * 32}px)`; }
 
 // ---------- Interfaz ----------
 $('go1').textContent = $('t1').textContent = CASA1.name; $('go2').textContent = $('t2').textContent = CASA2.name;
@@ -234,7 +259,7 @@ function begin() {
   toast(isTouch ? 'Camina con el pulgar izquierdo y arrastra para mirar.' : 'W A S D para caminar · ratón para mirar · Espacio para saltar · Esc abre el menú', 6000);
   perf.t = 0; perf.n = 0; perf.on = quality === 'alta' && !params.has('q');
 }
-function openMenu() { $('menu').hidden = false; document.exitPointerLock?.(); $('resume').focus(); keys.clear(); }
+function openMenu() { releaseAll(); $('menu').hidden = false; document.exitPointerLock?.(); $('resume').focus(); keys.clear(); }
 function closeMenu(lock = true) { $('menu').hidden = true; if (lock && !isTouch && !tour) canvas.requestPointerLock?.(); canvas.focus({ preventScroll: true }); }
 $('menu-btn').addEventListener('click', openMenu);
 $('resume').addEventListener('click', () => closeMenu());
@@ -392,5 +417,5 @@ function tourCheck() {
   });
   return out;
 }
-window.__app = { world, player, houses, tourCheck, begin, startTour, c1, c2, renderer, scene, setQuality(q) { quality = q; setupComposer(); } };
+window.__app = { __joy: joy, __look: look, world, player, houses, tourCheck, begin, startTour, c1, c2, renderer, scene, setQuality(q) { quality = q; setupComposer(); } };
 if (params.has('x') || params.has('play')) { $('intro').hidden = true; $('hud').hidden = false; playing = true; }
