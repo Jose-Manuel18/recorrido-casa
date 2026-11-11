@@ -31,7 +31,9 @@ try {
   $('fatal').hidden = false; $('intro').hidden = true; throw e;
 }
 let quality = params.get('q') || (isTouch ? 'media' : 'alta');
-renderer.setPixelRatio(Math.min(devicePixelRatio, isTouch ? 1.5 : 2));
+// en pantallas retina no hace falta dibujar a 2x: cuesta el doble y casi no se nota
+const applyPixelRatio = () => renderer.setPixelRatio(Math.min(devicePixelRatio, quality === 'alta' ? 1.5 : 1.25));
+applyPixelRatio();
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.9;
@@ -88,6 +90,7 @@ sun.position.copy(SUN_C).addScaledVector(sunDir, 140); sun.target.position.copy(
 sun.castShadow = true; sun.shadow.mapSize.setScalar(isTouch ? 2048 : 4096);
 Object.assign(sun.shadow.camera, { left: -46, right: 46, top: 46, bottom: -46, near: 20, far: 320 });
 sun.shadow.bias = -0.0003; sun.shadow.normalBias = 0.045;
+sun.shadow.autoUpdate = false; sun.shadow.needsUpdate = true; // el sol no se mueve: las sombras se refrescan cada pocos cuadros
 scene.add(sun, sun.target);
 
 // ---------- Mundo ----------
@@ -115,6 +118,7 @@ for (let i = 0; i < (isTouch ? 3 : 6); i++) { const l = new THREE.PointLight('#f
 let composer = null, gtao = null;
 function setupComposer() {
   if (composer) { composer.dispose(); composer = null; }
+  applyPixelRatio(); renderer.setSize(innerWidth, innerHeight);
   if (quality !== 'alta') return;
   const sz = renderer.getDrawingBufferSize(new THREE.Vector2());
   const rt = new THREE.WebGLRenderTarget(sz.x, sz.y, { type: THREE.HalfFloatType, samples: 4 });
@@ -275,9 +279,17 @@ function drawMap() {
 const clock = new THREE.Clock();
 let frame = 0, exposure = 0.9, lastRoom;
 const perf = { on: false, t: 0, n: 0 }; // si va lento en calidad alta, baja sola a media
-function tick() {
+let lastDraw = 0, idleFrames = 0;
+function tick(now) {
+  // tope de 60 cuadros por segundo (las pantallas de 120 Hz duplicaban el trabajo) y pausa con el menú abierto
+  if (now - lastDraw < 13) return;
+  const paused = playing && !$('menu').hidden;
+  if (paused) { if (idleFrames++ > 3) return; } else idleFrames = 0;
+  if (!playing && now - lastDraw < 30) return; // la portada va a 30 cuadros
+  lastDraw = now;
   const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
   frame++;
+  if (frame % 3 === 0) sun.shadow.needsUpdate = true;
   if (perf.on && playing) { perf.t += dt; perf.n++; if (perf.t > 4) { perf.on = false; if (perf.n / perf.t < 34) { $('quality').click(); toast('Bajé la calidad gráfica para que camine fluido. Puedes cambiarla en el menú.', 5000); } } }
   if (playing && $('menu').hidden) {
     let ix = joy.x, iy = -joy.y;
@@ -321,6 +333,7 @@ function tick() {
 renderer.setAnimationLoop(tick);
 
 addEventListener('resize', () => {
+  idleFrames = 0;
   renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.fov = fovFor(); camera.updateProjectionMatrix();
   if (composer) { const sz = renderer.getDrawingBufferSize(new THREE.Vector2()); composer.setSize(innerWidth, innerHeight); gtao?.setSize(sz.x, sz.y); }
 });
