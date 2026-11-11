@@ -12,8 +12,8 @@ import { placePeople } from './people.js';
 
 // ====== Nombres de los carteles (cámbialos aquí) ======
 const PROJECTS = [
-  { title: 'PROYECTO 1', sub: 'Remodelación de la casa', accent: '#e0a458' },
-  { title: 'PROYECTO 2', sub: 'Propuesta del taller', accent: '#8fbf9a' },
+  { title: 'PROYECTO 2', sub: 'Remodelación de la casa', accent: '#e0a458' }, // casa de la izquierda
+  { title: 'KIGO', sub: 'Propuesta del taller', accent: '#8fbf9a' }, // casa de la derecha (croquis de Miro)
 ];
 CASA1.name = cap(PROJECTS[0].title); CASA2.name = cap(PROJECTS[1].title);
 function cap(s) { return s.charAt(0) + s.slice(1).toLowerCase(); }
